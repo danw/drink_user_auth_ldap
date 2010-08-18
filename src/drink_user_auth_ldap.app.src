@@ -1,0 +1,11 @@
+{application, drink_user_auth_ldap,
+ [{description, "LDAP connector for Drink user_auth"},
+  {vsn, "1.0"},
+  {modules, [drink_user_auth_ldap_app,
+             drink_user_auth_ldap_sup,
+             user_auth_ldap]},
+  {registered,[]},
+  {applications, [kernel, stdlib, sasl]},
+  {mod, {drink_user_auth_ldap_app, []}},
+  {start_phases, []}
+]}.
