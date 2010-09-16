@@ -47,8 +47,8 @@ get_pass() ->
 	end.
 
 init() ->
-    {ok, Hostname} = application:get_env(host),
-	{ok, User} = application:get_env(user),
+	{ok, Hostname} = application:get_env(drink_user_auth_ldap, host),
+	{ok, User} = application:get_env(drink_user_auth_ldap, user),
 	{ok, Password} = get_pass(),
 	case eldap:open([Hostname]) of
 		{ok, Ldap} ->
