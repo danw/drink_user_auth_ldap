@@ -31,7 +31,35 @@
 
 -include_lib ("drink/include/user.hrl").
 
-init() -> ok.
+get_pass() ->
+	File = filename:join("etc", "ldappass"),
+	case filelib:is_file(File) of
+		true ->
+			case file:read_file(File) of
+				{ok, Bin} -> {ok, binary_to_list(Bin) -- "\n"};
+				_ ->
+					error_logger:error_msg("Unable to read Ldap Pass file: ~p~n", [File]),
+					{error, read_failed}
+			end;
+		false ->
+			error_logger:error_msg("Unable to find Ldap Pass file: ~p~n", [File]),
+			{error, pass_not_found}
+	end.
+
+init() ->
+    {ok, Hostname} = application:get_env(host),
+	{ok, User} = application:get_env(user),
+	{ok, Password} = get_pass(),
+	case eldap:open([Hostname]) of
+		{ok, Ldap} ->
+			put(eldap_user, Ldap),
+			case eldap:simple_bind(Ldap, User, Password) of
+				ok -> ok;
+				E -> error_logger:error_msg("error logging into LDAP: ~p~n", [E])
+			end;
+		E -> error_logger:error_msg("error starting LDAP: ~p~n", [E])
+	end,
+	ok.
 
 % User Auth Interfaces
 get_user(username, Username) ->
@@ -40,22 +68,22 @@ get_user(ibutton, Ibutton) ->
     get_ldap_user("ibutton", Ibutton).
 
 set_credits(UserInfo) ->
-    eldap:modify(eldap_user, 
+    eldap:modify(get(eldap_user), 
         "uid=" ++ UserInfo#user.username ++ ",ou=users,dc=csh,dc=rit,dc=edu",
         [eldap:mod_replace("drinkBalance", [val_to_ldap_attr(credits, UserInfo#user.credits)])]).
 
 set_admin(UserInfo) ->
-    eldap:modify(eldap_user,
+    eldap:modify(get(eldap_user),
         "uid=" ++ UserInfo#user.username ++ ",ou=users,dc=csh,dc=rit,dc=edu",
         [eldap:mod_replace("drinkAdmin", [val_to_ldap_attr(admin, UserInfo#user.admin)])]).
 
 add_ibutton(Username, IButton) ->
-    eldap:modify(eldap_user,
+    eldap:modify(get(eldap_user),
         "uid=" ++ Username ++ ",ou=users,dc=csh,dc=rit,dc=edu",
         [eldap:mod_add("ibutton", [val_to_ldap_attr(ibutton, IButton)])]).
 
 del_ibutton(Username, IButton) ->
-    eldap:modify(eldap_user,
+    eldap:modify(get(eldap_user),
         "uid=" ++ Username ++ ",ou=users,dc=csh,dc=rit,dc=edu",
         [eldap:mod_delete("ibutton", [val_to_ldap_attr(ibutton, IButton)])]).
 
@@ -108,14 +136,14 @@ get_ldap_user(Attr, Value) when is_list(Attr), is_list(Value) ->
 	Base = {base, "ou=users,dc=csh,dc=rit,dc=edu"},
 	Scope = {scope, eldap:singleLevel()},
 	Filter = {filter, eldap:equalityMatch(Attr, Value)},
-	case eldap:search(eldap_user, [Base, Scope, Filter]) of
-		{eldap_search_result, [ResultList], []} ->
+	case eldap:search(get(eldap_user), [Base, Scope, Filter]) of
+		{ok, {eldap_search_result, [ResultList], []}} ->
 		    Username = ldap_attribute("uid", ResultList),
 			Admin = ldap_attribute("drinkAdmin", ResultList),
 			Credits = ldap_attribute("drinkBalance", ResultList),
 			IButtons = ldap_attribute("ibutton", ResultList),
 			{ok, #user{username=Username,admin=Admin,credits=Credits,ibuttons=IButtons}};
-		{eldap_search_result, [], []} ->
+		{ok, {eldap_search_result, [], []}} ->
 		    {error, invalid_user};
 		{error, Reason} ->
 			{error, Reason};

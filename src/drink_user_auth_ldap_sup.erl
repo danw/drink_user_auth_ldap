@@ -36,9 +36,4 @@ start_link (Args) ->
 
 init ([]) ->
     {ok, {{one_for_one, 10, 3},  % One for one restart, shutdown after 10 restarts within 3 seconds
-        [{eldap_user,
-          {eldap, start_link, ["user"]},
-          permanent,            % Always restart
-          100,                  % Allow 10 seconds for it to shutdown
-          worker,               % It isn't a supervisor
-          [eldap]}]}}.
+        []}}.
