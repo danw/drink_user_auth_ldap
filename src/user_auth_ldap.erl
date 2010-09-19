@@ -31,7 +31,7 @@
 
 -include_lib ("drink/include/user.hrl").
 
-init() -> ok.
+init() -> application:start(drink_user_auth_ldap, permanent).
 
 % User Auth Interfaces
 get_user(username, Username) ->
