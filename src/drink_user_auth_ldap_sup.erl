@@ -36,4 +36,9 @@ start_link (Args) ->
 
 init ([]) ->
     {ok, {{one_for_one, 10, 3},  % One for one restart, shutdown after 10 restarts within 3 seconds
-        []}}.
+        [{eldap,
+		  {drink_eldap_sup, start_link, []},
+		  permanent,
+		  100,
+		  worker,
+		  [drink_eldap_sup]}]}}.
